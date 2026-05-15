@@ -31,7 +31,10 @@ async def 이동(ctx, *args):
     target_members = ctx.message.mentions # 메시지에서 언급(@)된 유저 목록 가져오기
 
     # 3. 도착 채널 찾기
-    to_channel = discord.utils.get(ctx.guild.voice_channels, name=destination_name)
+   # 수정 전: to_channel = discord.utils.get(ctx.guild.voice_channels, name=destination_name)
+    
+    # 수정 후: 이름에 입력한 글자가 포함되어 있으면 채널을 선택함
+    to_channel = next((channel for channel in ctx.guild.voice_channels if destination_name in channel.name), None)
     if not to_channel:
         await ctx.send(f"❓ '{destination_name}' 음성 채널을 찾을 수 없습니다.")
         return
