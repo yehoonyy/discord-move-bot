@@ -16,37 +16,40 @@ async def on_ready():
 
 # 3. 인원 이동 명령어
 @bot.command()
-async def 이동(ctx, from_channel_id: int, to_channel_id: int):
-    # 멤버 이동 권한이 있는지 확인
+async def 이동(ctx, *args):
+    # 1. 권한 확인
     if not ctx.author.guild_permissions.move_members:
-        await ctx.send("❌ 이 명령어를 사용할 권한(멤버 이동)이 없습니다.")
+        await ctx.send("❌ 권한이 없습니다.")
         return
 
-    # 채널 객체 가져오기
-    from_channel = bot.get_channel(from_channel_id)
-    to_channel = bot.get_channel(to_channel_id)
-
-    # 유효한 음성 채널인지 확인
-    if not isinstance(from_channel, discord.VoiceChannel) or not isinstance(to_channel, discord.VoiceChannel):
-        await ctx.send("⚠️ 올바른 음성 채널 ID를 입력해주세요.")
+    # 2. 인자 분석 (마지막 단어는 채널명, 나머지는 유저 언급)
+    if len(args) < 2:
+        await ctx.send("⚠️ 사용법: `!이동 @유저1 @유저2 채널이름` 형식으로 입력해주세요.")
         return
 
-    # 이동 작업 시작
+    destination_name = args[-1]  # 마지막 단어를 채널 이름으로 인식
+    target_members = ctx.message.mentions # 메시지에서 언급(@)된 유저 목록 가져오기
+
+    # 3. 도착 채널 찾기
+    to_channel = discord.utils.get(ctx.guild.voice_channels, name=destination_name)
+    if not to_channel:
+        await ctx.send(f"❓ '{destination_name}' 음성 채널을 찾을 수 없습니다.")
+        return
+
+    # 4. 이동 실행
+    if not target_members:
+        await ctx.send("⚠️ 이동시킬 유저를 @로 언급해주세요.")
+        return
+
     moved_count = 0
-    members = from_channel.members
-
-    if not members:
-        await ctx.send(f"ℹ️ {from_channel.name} 채널에 접속 중인 유저가 없습니다.")
-        return
-
-    for member in members:
-        try:
+    for member in target_members:
+        if member.voice: # 음성 채널에 접속 중인 경우에만 이동 가능
             await member.move_to(to_channel)
             moved_count += 1
-        except Exception as e:
-            print(f"이동 실패 ({member.display_name}): {e}")
+        else:
+            await ctx.send(f"⚠️ {member.display_name}님이 음성 채널에 없습니다.")
 
-    await ctx.send(f"✅ **성공:** {from_channel.name} ➡️ {to_channel.name} ({moved_count}명 이동 완료)")
+    await ctx.send(f"✅ 언급된 {moved_count}명을 **{to_channel.name}** 채널로 이동시켰습니다!")
 
 # 4. Render 환경 변수(BOT_TOKEN)를 사용하여 봇 실행
 token = os.getenv('BOT_TOKEN')
